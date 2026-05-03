@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>致鹭鹭 · 一生一世</title>
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+  crossorigin=""
+/>
+<style>
+  :root {
+    --pink: #ff6b9d;
+    --deep: #c0156b;
+    --bg: #0c0822;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    background: var(--bg);
+    font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", system-ui, sans-serif;
+    color: #fff;
+    overflow: hidden;
+  }
+
+  #map {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+    background: #0c0822;
+    filter: saturate(1.05);
+  }
+  .leaflet-container { background: #0c0822; cursor: default; }
+
+  /* ---------- 开场遮罩 ---------- */
+  #intro {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    text-align: center;
+    background: radial-gradient(circle at 50% 40%, #2a1146 0%, #0c0822 70%);
+    z-index: 9999;
+    transition: opacity 1.2s ease;
+  }
+  #intro h1 {
+    font-size: 44px;
+    margin: 0 0 18px;
+    background: linear-gradient(90deg, #ffb3d1, #ff6b9d, #ff3d8a);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    letter-spacing: 4px;
+  }
+  #intro p {
+    font-size: 16px;
+    color: #d8c8ff;
+    opacity: 0.85;
+    margin: 0 0 36px;
+    letter-spacing: 2px;
+  }
+  #intro .audio-hint {
+    margin-top: 14px;
+    font-size: 12px;
+    color: #b59ad8;
+    letter-spacing: 2px;
+    opacity: 0.7;
+  }
+  #startBtn {
+    padding: 14px 42px;
+    font-size: 16px;
+    color: #fff;
+    background: linear-gradient(135deg, #ff6b9d, #c0156b);
+    border: none; border-radius: 999px;
+    cursor: pointer;
+    letter-spacing: 4px;
+    box-shadow: 0 12px 30px rgba(255,107,157,0.45);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  #startBtn:hover { transform: translateY(-2px); box-shadow: 0 18px 36px rgba(255,107,157,0.55); }
+
+  .pulse { width: 60px; height: 60px; margin-bottom: 18px; position: relative; }
+  .pulse::before, .pulse::after {
+    content: ""; position: absolute; inset: 0; margin: auto;
+    width: 36px; height: 36px;
+    background: var(--pink);
+    transform: rotate(-45deg);
+    border-radius: 8px;
+    animation: beat 1.2s ease-in-out infinite;
+  }
+  .pulse::before { box-shadow: 18px 0 0 var(--pink); }
+  .pulse::after  { box-shadow: 0 -18px 0 var(--pink); }
+  @keyframes beat {
+    0%, 100% { transform: rotate(-45deg) scale(1); }
+    50%      { transform: rotate(-45deg) scale(1.18); }
+  }
+
+  /* ---------- 飞过世界的弹窗 ---------- */
+  .love-popup .leaflet-popup-content-wrapper {
+    background: rgba(255, 255, 255, 0.96);
+    color: #c0156b;
+    font-weight: 700;
+    border-radius: 18px;
+    box-shadow: 0 16px 40px rgba(192,21,107,0.35);
+    padding: 4px 6px;
+  }
+  .love-popup .leaflet-popup-tip { background: rgba(255,255,255,0.96); }
+  .love-popup .leaflet-popup-content {
+    margin: 12px 18px;
+    text-align: center;
+    line-height: 1.4;
+  }
+  .love-popup .lp-lang {
+    display: block;
+    font-size: 11px;
+    color: #999;
+    font-weight: 500;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .love-popup .lp-text {
+    font-size: 22px;
+    color: #c0156b;
+  }
+
+  /* 心形 marker：全程跳动 */
+  .heart-marker {
+    width: 14px; height: 14px;
+    background: #ff3d8a;
+    transform: rotate(-45deg);
+    border-radius: 3px;
+    box-shadow: 0 0 14px rgba(255,61,138,0.85);
+    animation: heartPing 1.4s ease-in-out infinite;
+  }
+  .heart-marker::before, .heart-marker::after {
+    content: ""; position: absolute;
+    width: 14px; height: 14px;
+    background: #ff3d8a;
+    border-radius: 50%;
+  }
+  .heart-marker::before { top: -7px; left: 0; }
+  .heart-marker::after  { left: 7px; top: 0; }
+  @keyframes heartPing {
+    0%, 100% { transform: rotate(-45deg) scale(1); }
+    50%      { transform: rotate(-45deg) scale(1.22); }
+  }
+
+  /* 全球总览时给每个心心叠一圈光环 ping */
+  body.world-overview .heart-marker::after {
+    /* keep heart shape */
+  }
+  body.world-overview .heart-pin-ring {
+    position: absolute;
+    left: 7px; top: 0;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 107, 157, 0.85);
+    animation: ringPing 2s ease-out infinite;
+    pointer-events: none;
+  }
+  @keyframes ringPing {
+    0%   { transform: scale(0.6); opacity: 1; }
+    100% { transform: scale(3.2); opacity: 0; }
+  }
+
+  /* ---------- 状态字幕 ---------- */
+  #subtitle {
+    position: absolute;
+    bottom: 40px; left: 0; right: 0;
+    text-align: center;
+    font-size: 18px;
+    letter-spacing: 4px;
+    color: #ffd6e7;
+    text-shadow: 0 4px 16px rgba(0,0,0,0.7);
+    z-index: 500;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    pointer-events: none;
+  }
+
+  /* 全球计数 */
+  #counter {
+    position: absolute;
+    top: 30px; right: 30px;
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: #ffd6e7;
+    background: rgba(12, 8, 34, 0.45);
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 107, 157, 0.35);
+    z-index: 500;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    pointer-events: none;
+    backdrop-filter: blur(6px);
+  }
+  #counter b { color: #ff6b9d; font-size: 16px; }
+
+  /* 静音按钮 */
+  #muteBtn {
+    position: absolute;
+    top: 30px; left: 30px;
+    z-index: 500;
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,107,157,0.4);
+    background: rgba(12, 8, 34, 0.55);
+    color: #ffd6e7;
+    cursor: pointer;
+    font-size: 16px;
+    backdrop-filter: blur(6px);
+    transition: background 0.2s;
+    opacity: 0;
+  }
+  #muteBtn.show { opacity: 1; }
+  #muteBtn:hover { background: rgba(255,107,157,0.18); }
+
+  /* ---------- 终场画面 ---------- */
+  #finale {
+    position: absolute;
+    inset: 0;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    text-align: center;
+    z-index: 800;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 1.6s ease;
+    background: radial-gradient(circle at center, rgba(192,21,107,0.0) 0%, rgba(12,8,34,0.55) 60%, rgba(12,8,34,0.85) 100%);
+  }
+  #finale.show { opacity: 1; pointer-events: auto; }
+  #finale h2 {
+    font-size: 52px;
+    margin: 0 0 14px;
+    color: #fff;
+    text-shadow: 0 0 28px rgba(255,107,157,0.85), 0 4px 18px rgba(0,0,0,0.6);
+    letter-spacing: 6px;
+    animation: floatY 4s ease-in-out infinite;
+  }
+  #finale p {
+    font-size: 22px;
+    color: #ffd6e7;
+    letter-spacing: 6px;
+    margin: 0;
+    text-shadow: 0 2px 14px rgba(0,0,0,0.6);
+  }
+  #finale .signoff {
+    margin-top: 36px;
+    font-size: 14px;
+    color: #b59ad8;
+    letter-spacing: 3px;
+    opacity: 0.7;
+  }
+  #replayBtn {
+    margin-top: 30px;
+    padding: 10px 28px;
+    font-size: 13px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,107,157,0.6);
+    color: #ffd6e7;
+    border-radius: 999px;
+    letter-spacing: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+    pointer-events: auto;
+  }
+  #replayBtn:hover { background: rgba(255,107,157,0.2); }
+  @keyframes floatY {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-10px); }
+  }
+
+  /* 把岛涂成红色 */
+  .island-paint {
+    fill: #ff1a55;
+    stroke: #ffe2ec;
+    stroke-width: 1.4;
+    filter: drop-shadow(0 0 14px #ff3d8a) drop-shadow(0 0 4px #ff3d8a);
+  }
+  .island-paint.beat {
+    animation: islandBeat 1.5s ease-in-out infinite;
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+  @keyframes islandBeat {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.04); }
+  }
+
+  /* 飘落的心 */
+  .falling-heart {
+    position: absolute;
+    top: -40px;
+    font-size: 24px;
+    color: #ff6b9d;
+    pointer-events: none;
+    animation: fall linear forwards;
+    text-shadow: 0 0 10px rgba(255,107,157,0.8);
+    z-index: 700;
+  }
+  @keyframes fall {
+    0%   { transform: translateY(-40px) rotate(0deg); opacity: 0; }
+    10%  { opacity: 1; }
+    100% { transform: translateY(110vh) rotate(360deg); opacity: 0.2; }
+  }
+</style>
+</head>
+<body>
+
+<div id="intro">
+  <div class="pulse"></div>
+  <h1>致 鹭 鹭</h1>
+  <p>一段绕着地球，只为你的告白</p>
+  <button id="startBtn">开 始</button>
+  <div class="audio-hint">🔊 请打开声音，让全世界为你说"我爱你"</div>
+</div>
+
+<div id="map"></div>
+<div id="subtitle"></div>
+<div id="counter"></div>
+<button id="muteBtn" title="静音 / 取消静音">🔊</button>
+
+<!-- 浪漫钢琴 BGM，循环播放 -->
+<audio id="bgm" src="audio/bgm.wav" loop preload="auto"></audio>
+
+<div id="finale">
+  <h2>鹭 鹭 我 爱 你</h2>
+  <p>我们要一生一世，长相厮守在一起</p>
+  <div class="signoff">— 你的，永远</div>
+  <button id="replayBtn">再 看 一 遍</button>
+</div>
+
+<script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+  crossorigin=""
+></script>
+<script>
+  // ===================== 数据：31 个语言/地区 =====================
+  // voice 字段是 BCP-47 语言代码，给浏览器的语音合成 API 用，浏览器会挑最匹配的本地声源
+  // audio 字段是本地预生成的 MP3 文件名（在 audio/ 目录下，由 generate_audio.py 用 Edge TTS Neural Voices 生成）
+  const messages = [
+    { city: "北京",       lang: "中文 (普通话)",  flag: "🇨🇳", text: "我爱你",                     voice: "zh-CN",  audio: "zh-CN",  coord: [39.9042, 116.4074] },
+    { city: "香港",       lang: "粵語",          flag: "🇭🇰", text: "我愛你",                     voice: "zh-HK",  audio: "zh-HK",  coord: [22.3193, 114.1694] },
+    { city: "台北",       lang: "中文 (繁體)",   flag: "🇹🇼", text: "我愛妳",                     voice: "zh-TW",  audio: "zh-TW",  coord: [25.0330, 121.5654] },
+    { city: "首尔",       lang: "한국어",        flag: "🇰🇷", text: "사랑해",                      voice: "ko-KR",  audio: "ko-KR",  coord: [37.5665, 126.9780] },
+    { city: "东京",       lang: "日本語",        flag: "🇯🇵", text: "愛してる",                    voice: "ja-JP",  audio: "ja-JP",  coord: [35.6762, 139.6503] },
+    { city: "马尼拉",     lang: "Tagalog",       flag: "🇵🇭", text: "Mahal kita",                 voice: "fil-PH", audio: "fil-PH", coord: [14.5995, 120.9842] },
+    { city: "雅加达",     lang: "Bahasa",        flag: "🇮🇩", text: "Aku cinta kamu",             voice: "id-ID",  audio: "id-ID",  coord: [-6.2088, 106.8456] },
+    { city: "河内",       lang: "Tiếng Việt",   flag: "🇻🇳", text: "Anh yêu em",                 voice: "vi-VN",  audio: "vi-VN",  coord: [21.0285, 105.8542] },
+    { city: "曼谷",       lang: "ภาษาไทย",       flag: "🇹🇭", text: "ฉันรักเธอ",                   voice: "th-TH",  audio: "th-TH",  coord: [13.7563, 100.5018] },
+    { city: "新德里",     lang: "हिन्दी",         flag: "🇮🇳", text: "मैं तुमसे प्यार करता हूँ", voice: "hi-IN",  audio: "hi-IN",  coord: [28.6139, 77.2090] },
+    { city: "德黑兰",     lang: "فارسی",         flag: "🇮🇷", text: "دوستت دارم",                voice: "fa-IR",  audio: "fa-IR",  coord: [35.6892, 51.3890] },
+    { city: "特拉维夫",   lang: "עברית",         flag: "🇮🇱", text: "אני אוהב אותך",             voice: "he-IL",  audio: "he-IL",  coord: [32.0853, 34.7818] },
+    { city: "迪拜",       lang: "العربية",        flag: "🇦🇪", text: "أحبك",                      voice: "ar-SA",  audio: "ar-SA",  coord: [25.2048, 55.2708] },
+    { city: "伊斯坦布尔", lang: "Türkçe",        flag: "🇹🇷", text: "Seni seviyorum",             voice: "tr-TR",  audio: "tr-TR",  coord: [41.0082, 28.9784] },
+    { city: "雅典",       lang: "Ελληνικά",      flag: "🇬🇷", text: "Σ' αγαπώ",                   voice: "el-GR",  audio: "el-GR",  coord: [37.9838, 23.7275] },
+    { city: "开罗",       lang: "العامية",        flag: "🇪🇬", text: "بحبك",                      voice: "ar-EG",  audio: "ar-EG",  coord: [30.0444, 31.2357] },
+    { city: "内罗毕",     lang: "Kiswahili",     flag: "🇰🇪", text: "Nakupenda",                  voice: "sw-KE",  audio: "sw-KE",  coord: [-1.2921, 36.8219] },
+    { city: "莫斯科",     lang: "Русский",       flag: "🇷🇺", text: "Я тебя люблю",              voice: "ru-RU",  audio: "ru-RU",  coord: [55.7558, 37.6173] },
+    { city: "华沙",       lang: "Polski",        flag: "🇵🇱", text: "Kocham Cię",                voice: "pl-PL",  audio: "pl-PL",  coord: [52.2297, 21.0122] },
+    { city: "柏林",       lang: "Deutsch",       flag: "🇩🇪", text: "Ich liebe dich",            voice: "de-DE",  audio: "de-DE",  coord: [52.5200, 13.4050] },
+    { city: "阿姆斯特丹", lang: "Nederlands",    flag: "🇳🇱", text: "Ik hou van jou",            voice: "nl-NL",  audio: "nl-NL",  coord: [52.3676, 4.9041] },
+    { city: "巴黎",       lang: "Français",      flag: "🇫🇷", text: "Je t'aime",                  voice: "fr-FR",  audio: "fr-FR",  coord: [48.8566, 2.3522] },
+    { city: "罗马",       lang: "Italiano",      flag: "🇮🇹", text: "Ti amo",                    voice: "it-IT",  audio: "it-IT",  coord: [41.9028, 12.4964] },
+    { city: "马德里",     lang: "Español",       flag: "🇪🇸", text: "Te amo",                    voice: "es-ES",  audio: "es-ES",  coord: [40.4168, -3.7038] },
+    { city: "里斯本",     lang: "Português",     flag: "🇵🇹", text: "Amo-te",                    voice: "pt-PT",  audio: "pt-PT",  coord: [38.7223, -9.1393] },
+    { city: "伦敦",       lang: "English",       flag: "🇬🇧", text: "I love you",                 voice: "en-GB",  audio: "en-GB",  coord: [51.5074, -0.1278] },
+    { city: "雷克雅未克", lang: "Íslenska",      flag: "🇮🇸", text: "Ég elska þig",              voice: "is-IS",  audio: "is-IS",  coord: [64.1466, -21.9426] },
+    { city: "纽约",       lang: "English",       flag: "🇺🇸", text: "I love you",                 voice: "en-US",  audio: "en-US",  coord: [40.7128, -74.0060] },
+    { city: "里约",       lang: "Português",     flag: "🇧🇷", text: "Eu te amo",                  voice: "pt-BR",  audio: "pt-BR",  coord: [-22.9068, -43.1729] },
+    { city: "悉尼",       lang: "English",       flag: "🇦🇺", text: "I love you",                 voice: "en-AU",  audio: "en-AU",  coord: [-33.8688, 151.2093] },
+    { city: "火奴鲁鲁",   lang: "ʻŌlelo Hawaiʻi", flag: "🌺", text: "Aloha au iā ʻoe",           voice: "en-US",  audio: "haw",    coord: [21.3099, -157.8581] },
+  ];
+
+  const heartIsland = {
+    name: "Galešnjak",
+    coord: [43.9806, 15.3856],
+    country: "克罗地亚 · 亚得里亚海",
+  };
+
+  // ===================== 语音 =====================
+  // 双引擎：优先 Google 翻译 TTS（自然女声，30+ 语言全覆盖），
+  // 失败时兜底到浏览器内置的 Web Speech API
+  let voicesCache = [];
+  let muted = false;
+  let currentAudio = null;
+  let googleTtsAvailable = null; // null=未知, true/false=已知
+
+  // BCP-47 → Google TTS 语言代码
+  function gLang(bcp47) {
+    const m = {
+      "zh-CN": "zh-CN",
+      "zh-HK": "yue",      // 粤语
+      "zh-TW": "zh-TW",
+      "ko-KR": "ko",
+      "ja-JP": "ja",
+      "fil-PH": "tl",      // Tagalog/Filipino
+      "id-ID": "id",
+      "vi-VN": "vi",
+      "th-TH": "th",
+      "hi-IN": "hi",
+      "fa-IR": "fa",
+      "he-IL": "iw",       // 注意：Google 用 iw 不是 he
+      "ar-SA": "ar",
+      "ar-EG": "ar",
+      "tr-TR": "tr",
+      "el-GR": "el",
+      "sw-KE": "sw",
+      "ru-RU": "ru",
+      "pl-PL": "pl",
+      "de-DE": "de",
+      "nl-NL": "nl",
+      "fr-FR": "fr",
+      "it-IT": "it",
+      "es-ES": "es",
+      "pt-PT": "pt",
+      "pt-BR": "pt-BR",
+      "en-GB": "en-GB",
+      "en-US": "en-US",
+      "en-AU": "en-AU",
+      "is-IS": "is",
+    };
+    return m[bcp47] || bcp47.split("-")[0];
+  }
+
+  // 浏览器声源（兜底）
+  function ensureVoices() {
+    return new Promise(resolve => {
+      if (!("speechSynthesis" in window)) return resolve([]);
+      const v = speechSynthesis.getVoices();
+      if (v && v.length) { voicesCache = v; return resolve(v); }
+      speechSynthesis.addEventListener("voiceschanged", () => {
+        voicesCache = speechSynthesis.getVoices();
+        resolve(voicesCache);
+      }, { once: true });
+      setTimeout(() => {
+        if (!voicesCache.length) voicesCache = speechSynthesis.getVoices();
+        resolve(voicesCache);
+      }, 1500);
+    });
+  }
+  function pickVoice(langCode) {
+    if (!voicesCache.length) return null;
+    let v = voicesCache.find(x => x.lang === langCode);
+    if (v) return v;
+    const fam = langCode.split("-")[0].toLowerCase();
+    v = voicesCache.find(x => x.lang.toLowerCase().startsWith(fam + "-"));
+    if (v) return v;
+    return voicesCache.find(x => x.lang.toLowerCase().startsWith(fam)) || null;
+  }
+
+  // ---- Google 翻译 TTS（HTML <audio> 直接播放 mp3，不需要 CORS） ----
+  function gttsUrl(text, googleLang) {
+    return `https://translate.google.com/translate_tts?ie=UTF-8`
+      + `&q=${encodeURIComponent(text)}`
+      + `&tl=${encodeURIComponent(googleLang)}`
+      + `&textlen=${text.length}`
+      + `&client=tw-ob`;
+  }
+
+  // 启动时探测一下 Google TTS 是否可达，避免每站都白等
+  async function probeGoogleTts() {
+    return new Promise(resolve => {
+      const a = new Audio();
+      a.preload = "auto";
+      let done = false;
+      const finish = ok => { if (!done) { done = true; resolve(ok); try { a.src = ""; } catch(e){} } };
+      a.addEventListener("canplaythrough", () => finish(true));
+      a.addEventListener("loadeddata", () => finish(true));
+      a.addEventListener("error", () => finish(false));
+      a.src = gttsUrl("hi", "en");
+      setTimeout(() => finish(false), 2500);
+    });
+  }
+
+  function speakViaGoogle(text, googleLang, maxMs = 6000) {
+    return new Promise((resolve, reject) => {
+      const audio = new Audio();
+      audio.crossOrigin = "anonymous";
+      currentAudio = audio;
+      let done = false;
+      let timer;
+      const cleanup = () => {
+        try { audio.pause(); audio.src = ""; } catch(e) {}
+        if (currentAudio === audio) currentAudio = null;
+        clearTimeout(timer);
+      };
+      const ok    = () => { if (!done) { done = true; clearTimeout(timer); if (currentAudio === audio) currentAudio = null; resolve(); } };
+      const fail  = () => { if (!done) { done = true; cleanup(); reject(new Error("gtts failed")); } };
+      const giveUp = () => { if (!done) { done = true; cleanup(); resolve(); } }; // 超时安静退出
+      audio.addEventListener("ended", ok);
+      audio.addEventListener("error", fail);
+      audio.src = gttsUrl(text, googleLang);
+      audio.play().catch(fail);
+      timer = setTimeout(giveUp, maxMs);
+    });
+  }
+
+  function speakViaBrowser(text, bcp47, maxMs = 4500) {
+    return new Promise(resolve => {
+      if (!("speechSynthesis" in window)) return resolve();
+      try { speechSynthesis.cancel(); } catch (e) {}
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = bcp47;
+      u.rate = 0.92;
+      u.pitch = 1.08;
+      u.volume = 1;
+      const voice = pickVoice(bcp47);
+      if (voice) u.voice = voice;
+      let done = false;
+      const finish = () => { if (!done) { done = true; resolve(); } };
+      u.onend = finish;
+      u.onerror = finish;
+      setTimeout(finish, maxMs);
+      try { speechSynthesis.speak(u); } catch (e) { finish(); }
+    });
+  }
+
+  // 播放本地预生成的 MP3 文件
+  function speakViaLocalMp3(audioSlug, maxMs = 6000) {
+    return new Promise((resolve, reject) => {
+      if (!audioSlug) return reject(new Error("no audio slug"));
+      const audio = new Audio(`audio/${audioSlug}.mp3`);
+      currentAudio = audio;
+      let done = false;
+      let timer;
+      const cleanup = () => {
+        try { audio.pause(); audio.src = ""; } catch(e) {}
+        if (currentAudio === audio) currentAudio = null;
+        clearTimeout(timer);
+      };
+      const ok    = () => { if (!done) { done = true; clearTimeout(timer); if (currentAudio === audio) currentAudio = null; resolve(); } };
+      const fail  = () => { if (!done) { done = true; cleanup(); reject(new Error("local mp3 failed")); } };
+      const giveUp = () => { if (!done) { done = true; cleanup(); resolve(); } };
+      audio.addEventListener("ended", ok);
+      audio.addEventListener("error", fail);
+      audio.play().catch(fail);
+      timer = setTimeout(giveUp, maxMs);
+    });
+  }
+
+  // 主对外接口：本地 MP3 → Google TTS → 浏览器 TTS
+  async function speak(textOrItem, bcp47, maxMs = 6000) {
+    if (muted) return;
+
+    // 兼容两种调用：speak(item) 或 speak(text, bcp47)
+    let text, voice, audioSlug;
+    if (typeof textOrItem === "object" && textOrItem !== null) {
+      text = textOrItem.text;
+      voice = textOrItem.voice;
+      audioSlug = textOrItem.audio;
+    } else {
+      text = textOrItem;
+      voice = bcp47;
+      audioSlug = null;
+    }
+
+    // 1) 本地 MP3
+    if (audioSlug) {
+      try { await speakViaLocalMp3(audioSlug, maxMs); return; }
+      catch (e) { /* fall through */ }
+    }
+
+    // 2) Google 翻译 TTS
+    if (googleTtsAvailable !== false) {
+      try {
+        await speakViaGoogle(text, gLang(voice), maxMs);
+        return;
+      } catch (e) {
+        if (googleTtsAvailable === null) googleTtsAvailable = false;
+      }
+    }
+
+    // 3) 浏览器内置 TTS
+    await speakViaBrowser(text, voice, Math.min(maxMs, 4500));
+  }
+
+  function stopAllAudio() {
+    if (currentAudio) {
+      try { currentAudio.pause(); currentAudio.src = ""; } catch(e) {}
+      currentAudio = null;
+    }
+    if ("speechSynthesis" in window) {
+      try { speechSynthesis.cancel(); } catch(e) {}
+    }
+  }
+
+  // ---- 背景音乐 ----
+  const bgm = document.getElementById("bgm");
+  const BGM_TARGET = 0.38;   // BGM 目标音量（在朗读人声之下，0~1）
+
+  function fadeBgm(targetVol, durationMs) {
+    return new Promise(resolve => {
+      const start = bgm.volume;
+      const t0 = performance.now();
+      function step(now) {
+        const t = Math.min((now - t0) / durationMs, 1);
+        // 缓动
+        const eased = t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2;
+        bgm.volume = Math.max(0, Math.min(1, start + (targetVol - start) * eased));
+        if (t < 1) requestAnimationFrame(step);
+        else resolve();
+      }
+      requestAnimationFrame(step);
+    });
+  }
+
+  async function startBgm() {
+    if (muted) return;
+    bgm.volume = 0;
+    try {
+      await bgm.play();
+      fadeBgm(BGM_TARGET, 3500);   // 3.5 秒慢慢淡入，不抢戏
+    } catch (e) {
+      console.warn("BGM 自动播放被拦截：", e);
+    }
+  }
+
+  function pauseBgm() {
+    try { bgm.pause(); } catch (e) {}
+  }
+  function resumeBgm() {
+    if (muted) return;
+    bgm.play().catch(() => {});
+  }
+
+  // ===================== 地图初始化 =====================
+  const map = L.map("map", {
+    zoomControl: false,
+    attributionControl: false,
+    worldCopyJump: true,
+    minZoom: 2,
+    maxZoom: 18,
+  }).setView([20, 20], 2);
+
+  const darkLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    subdomains: "abcd",
+    maxZoom: 19,
+  }).addTo(map);
+
+  const satLayer = L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    { maxZoom: 19, opacity: 0 }
+  ).addTo(map);
+
+  function fadeLayer(layer, target, durationMs) {
+    return new Promise(resolve => {
+      const start = layer.options.opacity ?? 1;
+      const t0 = performance.now();
+      function step(now) {
+        const t = Math.min((now - t0) / durationMs, 1);
+        layer.setOpacity(start + (target - start) * t);
+        if (t < 1) requestAnimationFrame(step);
+        else resolve();
+      }
+      requestAnimationFrame(step);
+    });
+  }
+
+  // ===================== 弹窗 / 标记 =====================
+  const openPopups = [];
+  const allMarkers = [];   // 全程累积，用于最后的全球总览
+  function clearPopups() {
+    while (openPopups.length) {
+      const p = openPopups.pop();
+      map.closePopup(p);
+    }
+  }
+  function setSubtitle(text) {
+    const el = document.getElementById("subtitle");
+    if (!text) { el.style.opacity = 0; return; }
+    el.textContent = text;
+    el.style.opacity = 1;
+  }
+  function setCounter(html) {
+    const el = document.getElementById("counter");
+    if (!html) { el.style.opacity = 0; return; }
+    el.innerHTML = html;
+    el.style.opacity = 1;
+  }
+  function showLovePopup(item) {
+    const heartIcon = L.divIcon({
+      className: "",
+      html: `<div class="heart-marker"></div>`,
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
+    });
+    const marker = L.marker(item.coord, { icon: heartIcon }).addTo(map);
+    allMarkers.push(marker);
+
+    const html = `
+      <span class="lp-lang">${item.flag} ${item.city} · ${item.lang}</span>
+      <span class="lp-text">${item.text}</span>
+    `;
+    const popup = L.popup({
+      className: "love-popup",
+      closeButton: false,
+      autoClose: false,
+      closeOnClick: false,
+      offset: [0, -8],
+    })
+      .setLatLng(item.coord)
+      .setContent(html)
+      .openOn(map);
+    openPopups.push(popup);
+  }
+
+  function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+  function flyTo(coord, zoom, durationSec) {
+    return new Promise(resolve => {
+      map.flyTo(coord, zoom, { duration: durationSec, easeLinearity: 0.25 });
+      const onEnd = () => { map.off("moveend", onEnd); resolve(); };
+      map.on("moveend", onEnd);
+      setTimeout(resolve, durationSec * 1000 + 200);
+    });
+  }
+
+  // ===================== 真实小岛轮廓 =====================
+  async function fetchIslandPolygon() {
+    const q = `[out:json][timeout:20];
+(
+  way(around:600,${heartIsland.coord[0]},${heartIsland.coord[1]})["place"~"island|islet"];
+  way(around:600,${heartIsland.coord[0]},${heartIsland.coord[1]})["natural"="coastline"];
+);
+out geom;`;
+    const endpoints = [
+      "https://overpass-api.de/api/interpreter",
+      "https://overpass.kumi.systems/api/interpreter",
+    ];
+    for (const url of endpoints) {
+      try {
+        const r = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: "data=" + encodeURIComponent(q),
+        });
+        if (!r.ok) continue;
+        const data = await r.json();
+        const ways = (data.elements || [])
+          .filter(e => e.type === "way" && Array.isArray(e.geometry) && e.geometry.length > 8);
+        if (!ways.length) continue;
+        ways.sort((a, b) => b.geometry.length - a.geometry.length);
+        return ways[0].geometry.map(pt => [pt.lat, pt.lon]);
+      } catch (e) { /* try next */ }
+    }
+    return null;
+  }
+
+  function fallbackHeartPolygon(center) {
+    const pts = [];
+    const sLat = 0.00018;
+    const sLon = sLat * 1.4;
+    for (let t = 0; t <= Math.PI * 2 + 0.01; t += 0.05) {
+      const x = 16 * Math.pow(Math.sin(t), 3);
+      const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
+      pts.push([center[0] + (y + 2) * sLat, center[1] + x * sLon]);
+    }
+    return pts;
+  }
+
+  async function paintIslandRed() {
+    let outline = await fetchIslandPolygon();
+    let usingReal = !!outline;
+    if (!outline) outline = fallbackHeartPolygon(heartIsland.coord);
+
+    const trace = L.polygon(outline, {
+      color: "#ffe2ec",
+      weight: 2,
+      opacity: 1,
+      fill: true,
+      fillColor: "#ff1a55",
+      fillOpacity: 0,
+      className: "island-paint",
+    }).addTo(map);
+
+    await wait(900);
+
+    const start = performance.now();
+    const dur = 1700;
+    await new Promise(resolve => {
+      function step(now) {
+        const t = Math.min((now - start) / dur, 1);
+        trace.setStyle({ fillOpacity: 0.85 * t });
+        if (t < 1) requestAnimationFrame(step);
+        else resolve();
+      }
+      requestAnimationFrame(step);
+    });
+
+    if (trace._path) trace._path.classList.add("beat");
+    return { polygon: trace, usingReal };
+  }
+
+  // ===================== 主流程 =====================
+  async function runJourney() {
+    document.getElementById("muteBtn").classList.add("show");
+
+    setSubtitle("正在准备世界各地的声音 …");
+    // 主要用本地 MP3（Edge 神经网络合成），浏览器 TTS 留作最后兜底
+    await ensureVoices();
+    console.info("🔊 主语音：本地 MP3（Edge Neural Voice），失败时回落到 Google TTS / 浏览器 TTS");
+
+    setSubtitle("我想，用全世界的语言告诉你 …");
+    await flyTo([30, 100], 3, 2.0);
+    await wait(700);
+
+    for (let i = 0; i < messages.length; i++) {
+      const m = messages[i];
+      setCounter(`<b>${i + 1}</b> / ${messages.length}　${m.flag} ${m.city}`);
+      setSubtitle(`${m.lang}`);
+
+      await flyTo(m.coord, 4, 1.2);
+      showLovePopup(m);
+
+      // 弹窗出现后开始朗读，与最短停留时间并行
+      const speakPromise = speak(m, null, 6000);
+      await wait(900);          // 至少停留 0.9s 让人看清字
+      await speakPromise;       // 然后等声音念完
+      await wait(250);          // 喘一口气
+
+      if ((i + 1) % 4 === 0) clearPopups();
+    }
+
+    clearPopups();
+
+    // ===== 全球总览：所有心心一起跳动 =====
+    setSubtitle("看，全世界都在为你跳动 ❤");
+    setCounter(`<b>${messages.length}</b> 个角落，每一个都在说我爱你`);
+    document.body.classList.add("world-overview");
+    addPingRingsToMarkers();
+
+    // 拉到能装下全球的视角
+    await flyTo([22, 25], 2.4, 3.0);
+    await wait(5500);
+
+    // 慢慢转向克罗地亚
+    setSubtitle("可这些，都还不够 …");
+    setCounter("");
+    document.body.classList.remove("world-overview");
+    await wait(1400);
+
+    setSubtitle("地球上有一个地方，它生来就是一颗心 ❤");
+    await flyTo([45, 16], 5.5, 2.8);
+    await wait(900);
+
+    setSubtitle(`${heartIsland.country}`);
+    await flyTo(heartIsland.coord, 11, 2.6);
+    await wait(700);
+
+    // 切到卫星图，能看见真实小岛
+    setSubtitle("看，那座岛 …");
+    await Promise.all([
+      fadeLayer(satLayer, 1, 1500),
+      fadeLayer(darkLayer, 0.15, 1500),
+    ]);
+    await flyTo(heartIsland.coord, 15, 2.4);
+    await wait(900);
+
+    // 把岛涂成红色
+    setSubtitle(`${heartIsland.name} · 一座天然的心形岛`);
+    const painted = await paintIslandRed();
+    await flyTo(heartIsland.coord, 16, 2.0);
+    await wait(1400);
+    if (!painted.usingReal) console.info("使用了备用心形（OSM 没返回数据）");
+
+    setSubtitle("");
+    showFinale();
+  }
+
+  // 给已有的所有 heart-marker 叠一圈光环（仅在全球总览阶段显示）
+  function addPingRingsToMarkers() {
+    document.querySelectorAll(".heart-marker").forEach(el => {
+      if (el.querySelector(".heart-pin-ring")) return;
+      const ring = document.createElement("div");
+      ring.className = "heart-pin-ring";
+      el.appendChild(ring);
+    });
+  }
+
+  function showFinale() {
+    document.getElementById("finale").classList.add("show");
+    rainHearts();
+    // 终场让 BGM 慢慢亮起来 —— 没有人声了，钢琴可以唱主角
+    fadeBgm(0.62, 3000);
+  }
+
+  function rainHearts() {
+    const symbols = ["❤", "💗", "💖", "💕", "🌹"];
+    let count = 0;
+    const max = 90;
+    const id = setInterval(() => {
+      if (count++ > max) { clearInterval(id); return; }
+      const h = document.createElement("div");
+      h.className = "falling-heart";
+      h.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+      h.style.left = Math.random() * 100 + "vw";
+      h.style.fontSize = (16 + Math.random() * 22) + "px";
+      h.style.animationDuration = (5 + Math.random() * 5) + "s";
+      h.style.animationDelay = (Math.random() * 1.5) + "s";
+      h.style.opacity = 0.85;
+      document.body.appendChild(h);
+      setTimeout(() => h.remove(), 11000);
+    }, 220);
+  }
+
+  // ===================== 启动 / 静音 =====================
+  document.getElementById("startBtn").addEventListener("click", () => {
+    // 1) 唤醒浏览器内置语音（iOS Safari 必须）
+    if ("speechSynthesis" in window) {
+      try {
+        const warm = new SpeechSynthesisUtterance(" ");
+        warm.volume = 0;
+        speechSynthesis.speak(warm);
+      } catch (e) {}
+    }
+    // 2) 唤醒 HTML5 Audio（iOS / 部分 Chrome 自动播放策略需要先有用户手势触发的播放）
+    try {
+      const silent = new Audio(
+        "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="
+      );
+      silent.volume = 0;
+      silent.play().catch(() => {});
+    } catch (e) {}
+
+    const intro = document.getElementById("intro");
+    intro.style.opacity = 0;
+    setTimeout(() => intro.remove(), 1100);
+
+    // 启动 BGM
+    startBgm();
+
+    runJourney();
+  });
+
+  document.getElementById("muteBtn").addEventListener("click", () => {
+    muted = !muted;
+    document.getElementById("muteBtn").textContent = muted ? "🔇" : "🔊";
+    if (muted) {
+      stopAllAudio();
+      pauseBgm();
+    } else {
+      resumeBgm();
+    }
+  });
+
+  document.getElementById("replayBtn").addEventListener("click", () => location.reload());
+</script>
+</body>
+</html>
