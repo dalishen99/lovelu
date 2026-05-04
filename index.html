@@ -4,6 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>致鹭鹭 · 一生一世</title>
+<!-- 粉色心形 favicon（SVG，所有现代浏览器都支持） -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20fill%3D%27%23ff3d8a%27%20d%3D%27M12%2021.35l-1.45-1.32C5.4%2015.36%202%2012.28%202%208.5%202%205.42%204.42%203%207.5%203c1.74%200%203.41.81%204.5%202.09C13.09%203.81%2014.76%203%2016.5%203%2019.58%203%2022%205.42%2022%208.5c0%203.78-3.4%206.86-8.55%2011.54L12%2021.35z%27%2F%3E%3C%2Fsvg%3E" />
+<!-- Apple/旧浏览器的兜底（同样的 SVG 数据 URI） -->
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20fill%3D%27%23ff3d8a%27%20d%3D%27M12%2021.35l-1.45-1.32C5.4%2015.36%202%2012.28%202%208.5%202%205.42%204.42%203%207.5%203c1.74%200%203.41.81%204.5%202.09C13.09%203.81%2014.76%203%2016.5%203%2019.58%203%2022%205.42%2022%208.5c0%203.78-3.4%206.86-8.55%2011.54L12%2021.35z%27%2F%3E%3C%2Fsvg%3E" />
 <link
   rel="stylesheet"
   href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -80,20 +84,17 @@
   }
   #startBtn:hover { transform: translateY(-2px); box-shadow: 0 18px 36px rgba(255,107,157,0.55); }
 
-  .pulse { width: 60px; height: 60px; margin-bottom: 18px; position: relative; }
-  .pulse::before, .pulse::after {
-    content: ""; position: absolute; inset: 0; margin: auto;
-    width: 36px; height: 36px;
-    background: var(--pink);
-    transform: rotate(-45deg);
-    border-radius: 8px;
+  /* 首页心形 —— 用 SVG，所有设备上都是正的 */
+  .intro-heart {
+    width: 78px; height: 78px;
+    margin-bottom: 16px;
+    fill: #ff6b9d;
+    filter: drop-shadow(0 0 18px rgba(255,107,157,0.75));
     animation: beat 1.2s ease-in-out infinite;
   }
-  .pulse::before { box-shadow: 18px 0 0 var(--pink); }
-  .pulse::after  { box-shadow: 0 -18px 0 var(--pink); }
   @keyframes beat {
-    0%, 100% { transform: rotate(-45deg) scale(1); }
-    50%      { transform: rotate(-45deg) scale(1.18); }
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.16); }
   }
 
   /* ---------- 飞过世界的弹窗 ---------- */
@@ -305,12 +306,63 @@
     10%  { opacity: 1; }
     100% { transform: translateY(110vh) rotate(360deg); opacity: 0.2; }
   }
+
+  /* ---------- 移动端 / 竖屏适配 ---------- */
+  @media (max-width: 768px), (orientation: portrait) {
+    /* 终场文字上移 + 缩小，把屏幕中下方让给红色心形岛 */
+    #finale {
+      justify-content: flex-start;
+      padding-top: 8vh;
+      background: linear-gradient(
+        to bottom,
+        rgba(12,8,34,0.85) 0%,
+        rgba(12,8,34,0.55) 22%,
+        rgba(12,8,34,0.0)  45%,
+        rgba(12,8,34,0.0)  70%,
+        rgba(12,8,34,0.55) 100%
+      );
+    }
+    #finale h2 {
+      font-size: 32px;
+      letter-spacing: 4px;
+      margin-bottom: 8px;
+    }
+    #finale p {
+      font-size: 14px;
+      letter-spacing: 1.5px;
+      padding: 0 24px;
+      line-height: 1.5;
+    }
+    #finale .signoff {
+      margin-top: 16px;
+      font-size: 11px;
+      letter-spacing: 2px;
+    }
+    #replayBtn {
+      margin-top: 18px;
+      padding: 8px 22px;
+      font-size: 12px;
+      letter-spacing: 3px;
+    }
+
+    /* 开场文字也跟着稍微小一点 */
+    #intro h1 { font-size: 36px; letter-spacing: 3px; }
+    #intro p  { font-size: 14px; letter-spacing: 1.5px; padding: 0 24px; }
+    #intro .audio-hint { padding: 0 24px; font-size: 11px; }
+
+    /* 字幕缩小，避免遮挡 */
+    #subtitle { font-size: 14px; letter-spacing: 2px; padding: 0 16px; }
+    #counter { font-size: 11px; padding: 6px 12px; top: 16px; right: 16px; }
+    #muteBtn { top: 16px; left: 16px; }
+  }
 </style>
 </head>
 <body>
 
 <div id="intro">
-  <div class="pulse"></div>
+  <svg class="intro-heart" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+  </svg>
   <h1>致 鹭 鹭</h1>
   <p>一段绕着地球，只为你的告白</p>
   <button id="startBtn">开 始</button>
@@ -326,9 +378,9 @@
 <audio id="bgm" src="audio/bgm.wav" loop preload="auto"></audio>
 
 <div id="finale">
-  <h2>鹭 鹭 我 爱 你</h2>
-  <p>我们要一生一世，长相厮守在一起</p>
-  <div class="signoff">— 你的，永远</div>
+  <h2>lulu&nbsp;&nbsp;我&nbsp;爱&nbsp;你</h2>
+  <p>Forever and always, side by side</p>
+  <div class="signoff">— Yours, forever</div>
   <button id="replayBtn">再 看 一 遍</button>
 </div>
 
@@ -377,9 +429,39 @@
 
   const heartIsland = {
     name: "Galešnjak",
-    coord: [43.9806, 15.3856],
+    // 这个坐标是岛的真实质心（来自 OSM way 8838220 全部 72 个点取平均）
+    coord: [43.978439, 15.383526],
     country: "克罗地亚 · 亚得里亚海",
   };
+
+  // Galešnjak 真实海岸线，来自 OpenStreetMap way 8838220，预先拉好嵌进来
+  // 这样不再依赖在线 Overpass API，永远稳，画出来就是岛的真实形状
+  const GALESNJAK_POLYGON = [
+    [43.976717, 15.384097], [43.976852, 15.384295], [43.977065, 15.384611],
+    [43.977251, 15.384930], [43.977520, 15.385426], [43.977610, 15.385513],
+    [43.977601, 15.385631], [43.977661, 15.385624], [43.977795, 15.385813],
+    [43.977985, 15.386007], [43.978206, 15.386183], [43.978416, 15.386303],
+    [43.978794, 15.386421], [43.979192, 15.386532], [43.979470, 15.386602],
+    [43.979710, 15.386584], [43.979943, 15.386503], [43.980119, 15.386406],
+    [43.980278, 15.386252], [43.980399, 15.386012], [43.980474, 15.385708],
+    [43.980499, 15.385277], [43.980454, 15.384841], [43.980344, 15.384438],
+    [43.980146, 15.384080], [43.980030, 15.383909], [43.979817, 15.383667],
+    [43.979635, 15.383460], [43.979550, 15.383377], [43.979444, 15.383340],
+    [43.979376, 15.383292], [43.979307, 15.383245], [43.979262, 15.383189],
+    [43.979206, 15.383108], [43.979294, 15.382991], [43.979404, 15.382839],
+    [43.979522, 15.382582], [43.979656, 15.382289], [43.979744, 15.381982],
+    [43.979778, 15.381587], [43.979748, 15.381208], [43.979678, 15.380899],
+    [43.979556, 15.380546], [43.979307, 15.380250], [43.979137, 15.380106],
+    [43.978871, 15.380063], [43.978583, 15.380091], [43.978327, 15.380237],
+    [43.978130, 15.380410], [43.977931, 15.380710], [43.977766, 15.381188],
+    [43.977739, 15.381447], [43.977666, 15.381614], [43.977658, 15.382002],
+    [43.977591, 15.382228], [43.977475, 15.382453], [43.977376, 15.382612],
+    [43.977195, 15.382763], [43.977038, 15.382887], [43.976985, 15.382872],
+    [43.976969, 15.382907], [43.976994, 15.382971], [43.976870, 15.383043],
+    [43.976639, 15.383229], [43.976587, 15.383321], [43.976575, 15.383492],
+    [43.976580, 15.383614], [43.976589, 15.383771], [43.976590, 15.383892],
+    [43.976574, 15.383970], [43.976629, 15.384014], [43.976717, 15.384097],
+  ];
 
   // ===================== 语音 =====================
   // 双引擎：优先 Google 翻译 TTS（自然女声，30+ 语言全覆盖），
@@ -660,6 +742,26 @@
     });
   }
 
+  // ----- 视口检测 + 心形岛专用的偏移 / 缩放 -----
+  function isPortrait() { return window.innerHeight > window.innerWidth * 1.05; }
+
+  // 根据当前视口决定心形岛的最终 zoom：手机竖屏空间小，少缩一档让整座岛能装下
+  function islandZoom(level) {
+    // level: 'far' | 'mid' | 'near'
+    if (isPortrait()) {
+      return level === "far" ? 11 : level === "mid" ? 14 : 15;
+    }
+    return level === "far" ? 11 : level === "mid" ? 15 : 16;
+  }
+
+  // 把目标坐标"上挪"几屏百分点，让小岛出现在文字下方而不是被文字盖住
+  function islandTarget(coord, zoom) {
+    if (!isPortrait()) return coord;
+    const px = map.project(L.latLng(coord), zoom);
+    px.y -= window.innerHeight * 0.20;   // 中心在屏幕上抬约 20%
+    return map.unproject(px, zoom);
+  }
+
   // ===================== 弹窗 / 标记 =====================
   const openPopups = [];
   const allMarkers = [];   // 全程累积，用于最后的全球总览
@@ -718,53 +820,10 @@
     });
   }
 
-  // ===================== 真实小岛轮廓 =====================
-  async function fetchIslandPolygon() {
-    const q = `[out:json][timeout:20];
-(
-  way(around:600,${heartIsland.coord[0]},${heartIsland.coord[1]})["place"~"island|islet"];
-  way(around:600,${heartIsland.coord[0]},${heartIsland.coord[1]})["natural"="coastline"];
-);
-out geom;`;
-    const endpoints = [
-      "https://overpass-api.de/api/interpreter",
-      "https://overpass.kumi.systems/api/interpreter",
-    ];
-    for (const url of endpoints) {
-      try {
-        const r = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: "data=" + encodeURIComponent(q),
-        });
-        if (!r.ok) continue;
-        const data = await r.json();
-        const ways = (data.elements || [])
-          .filter(e => e.type === "way" && Array.isArray(e.geometry) && e.geometry.length > 8);
-        if (!ways.length) continue;
-        ways.sort((a, b) => b.geometry.length - a.geometry.length);
-        return ways[0].geometry.map(pt => [pt.lat, pt.lon]);
-      } catch (e) { /* try next */ }
-    }
-    return null;
-  }
-
-  function fallbackHeartPolygon(center) {
-    const pts = [];
-    const sLat = 0.00018;
-    const sLon = sLat * 1.4;
-    for (let t = 0; t <= Math.PI * 2 + 0.01; t += 0.05) {
-      const x = 16 * Math.pow(Math.sin(t), 3);
-      const y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
-      pts.push([center[0] + (y + 2) * sLat, center[1] + x * sLon]);
-    }
-    return pts;
-  }
-
+  // ===================== 把岛涂成红色 =====================
+  // 直接用嵌入的真实海岸线多边形，不依赖任何在线 API，永远稳
   async function paintIslandRed() {
-    let outline = await fetchIslandPolygon();
-    let usingReal = !!outline;
-    if (!outline) outline = fallbackHeartPolygon(heartIsland.coord);
+    const outline = GALESNJAK_POLYGON;
 
     const trace = L.polygon(outline, {
       color: "#ffe2ec",
@@ -791,7 +850,7 @@ out geom;`;
     });
 
     if (trace._path) trace._path.classList.add("beat");
-    return { polygon: trace, usingReal };
+    return { polygon: trace };
   }
 
   // ===================== 主流程 =====================
@@ -847,7 +906,10 @@ out geom;`;
     await wait(900);
 
     setSubtitle(`${heartIsland.country}`);
-    await flyTo(heartIsland.coord, 11, 2.6);
+    {
+      const z = islandZoom("far");
+      await flyTo(islandTarget(heartIsland.coord, z), z, 2.6);
+    }
     await wait(700);
 
     // 切到卫星图，能看见真实小岛
@@ -856,15 +918,20 @@ out geom;`;
       fadeLayer(satLayer, 1, 1500),
       fadeLayer(darkLayer, 0.15, 1500),
     ]);
-    await flyTo(heartIsland.coord, 15, 2.4);
+    {
+      const z = islandZoom("mid");
+      await flyTo(islandTarget(heartIsland.coord, z), z, 2.4);
+    }
     await wait(900);
 
     // 把岛涂成红色
     setSubtitle(`${heartIsland.name} · 一座天然的心形岛`);
-    const painted = await paintIslandRed();
-    await flyTo(heartIsland.coord, 16, 2.0);
+    await paintIslandRed();
+    {
+      const z = islandZoom("near");
+      await flyTo(islandTarget(heartIsland.coord, z), z, 2.0);
+    }
     await wait(1400);
-    if (!painted.usingReal) console.info("使用了备用心形（OSM 没返回数据）");
 
     setSubtitle("");
     showFinale();
