@@ -71,6 +71,27 @@
     letter-spacing: 2px;
     opacity: 0.7;
   }
+  #fullscreenBtn {
+    position: absolute;
+    top: 28px; right: 28px;
+    z-index: 1;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,107,157,0.45);
+    background: rgba(255,255,255,0.08);
+    color: #ffd6e7;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 10px 26px rgba(0,0,0,0.22);
+    transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  }
+  #fullscreenBtn:hover {
+    transform: translateY(-2px);
+    background: rgba(255,107,157,0.18);
+    border-color: rgba(255,107,157,0.7);
+  }
   #startBtn {
     padding: 14px 42px;
     font-size: 16px;
@@ -308,24 +329,13 @@
   }
 
   /* ---------- 移动端 / 竖屏适配 ---------- */
+  /* 布局结构跟 PC 一样：文字水平垂直居中，正好叠在红色心形岛上方 */
+  /* 只是缩小字号，避免溢出 */
   @media (max-width: 768px), (orientation: portrait) {
-    /* 终场文字上移 + 缩小，把屏幕中下方让给红色心形岛 */
-    #finale {
-      justify-content: flex-start;
-      padding-top: 8vh;
-      background: linear-gradient(
-        to bottom,
-        rgba(12,8,34,0.85) 0%,
-        rgba(12,8,34,0.55) 22%,
-        rgba(12,8,34,0.0)  45%,
-        rgba(12,8,34,0.0)  70%,
-        rgba(12,8,34,0.55) 100%
-      );
-    }
     #finale h2 {
-      font-size: 32px;
-      letter-spacing: 4px;
-      margin-bottom: 8px;
+      font-size: 34px;
+      letter-spacing: 3px;
+      margin-bottom: 10px;
     }
     #finale p {
       font-size: 14px;
@@ -334,12 +344,12 @@
       line-height: 1.5;
     }
     #finale .signoff {
-      margin-top: 16px;
+      margin-top: 22px;
       font-size: 11px;
       letter-spacing: 2px;
     }
     #replayBtn {
-      margin-top: 18px;
+      margin-top: 20px;
       padding: 8px 22px;
       font-size: 12px;
       letter-spacing: 3px;
@@ -354,12 +364,14 @@
     #subtitle { font-size: 14px; letter-spacing: 2px; padding: 0 16px; }
     #counter { font-size: 11px; padding: 6px 12px; top: 16px; right: 16px; }
     #muteBtn { top: 16px; left: 16px; }
+    #fullscreenBtn { top: 16px; right: 16px; width: 36px; height: 36px; font-size: 16px; }
   }
 </style>
 </head>
 <body>
 
 <div id="intro">
+  <button id="fullscreenBtn" type="button" title="全屏 / 退出全屏" aria-label="全屏 / 退出全屏">⛶</button>
   <svg class="intro-heart" viewBox="0 0 24 24" aria-hidden="true">
     <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
   </svg>
@@ -742,24 +754,11 @@
     });
   }
 
-  // ----- 视口检测 + 心形岛专用的偏移 / 缩放 -----
-  function isPortrait() { return window.innerHeight > window.innerWidth * 1.05; }
-
-  // 根据当前视口决定心形岛的最终 zoom：手机竖屏空间小，少缩一档让整座岛能装下
+  // ----- 心形岛镜头：PC / 移动一致，岛永远在视图正中（文字叠在上面） -----
+  // PC / 移动端使用同一套镜头，保证终场文字和心形岛重合效果一致。
   function islandZoom(level) {
     // level: 'far' | 'mid' | 'near'
-    if (isPortrait()) {
-      return level === "far" ? 11 : level === "mid" ? 14 : 15;
-    }
     return level === "far" ? 11 : level === "mid" ? 15 : 16;
-  }
-
-  // 把目标坐标"上挪"几屏百分点，让小岛出现在文字下方而不是被文字盖住
-  function islandTarget(coord, zoom) {
-    if (!isPortrait()) return coord;
-    const px = map.project(L.latLng(coord), zoom);
-    px.y -= window.innerHeight * 0.20;   // 中心在屏幕上抬约 20%
-    return map.unproject(px, zoom);
   }
 
   // ===================== 弹窗 / 标记 =====================
@@ -906,10 +905,7 @@
     await wait(900);
 
     setSubtitle(`${heartIsland.country}`);
-    {
-      const z = islandZoom("far");
-      await flyTo(islandTarget(heartIsland.coord, z), z, 2.6);
-    }
+    await flyTo(heartIsland.coord, islandZoom("far"), 2.6);
     await wait(700);
 
     // 切到卫星图，能看见真实小岛
@@ -918,19 +914,13 @@
       fadeLayer(satLayer, 1, 1500),
       fadeLayer(darkLayer, 0.15, 1500),
     ]);
-    {
-      const z = islandZoom("mid");
-      await flyTo(islandTarget(heartIsland.coord, z), z, 2.4);
-    }
+    await flyTo(heartIsland.coord, islandZoom("mid"), 2.4);
     await wait(900);
 
     // 把岛涂成红色
     setSubtitle(`${heartIsland.name} · 一座天然的心形岛`);
     await paintIslandRed();
-    {
-      const z = islandZoom("near");
-      await flyTo(islandTarget(heartIsland.coord, z), z, 2.0);
-    }
+    await flyTo(heartIsland.coord, islandZoom("near"), 2.0);
     await wait(1400);
 
     setSubtitle("");
@@ -974,6 +964,28 @@
   }
 
   // ===================== 启动 / 静音 =====================
+  const fullscreenBtn = document.getElementById("fullscreenBtn");
+  function updateFullscreenBtn() {
+    const isFullscreen = Boolean(document.fullscreenElement);
+    fullscreenBtn.textContent = isFullscreen ? "×" : "⛶";
+    fullscreenBtn.title = isFullscreen ? "退出全屏" : "全屏";
+    fullscreenBtn.setAttribute("aria-label", fullscreenBtn.title);
+  }
+  fullscreenBtn.addEventListener("click", async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch (e) {
+      console.warn("Fullscreen is not available:", e);
+    }
+  });
+  document.addEventListener("fullscreenchange", updateFullscreenBtn);
+  if (!document.fullscreenEnabled) fullscreenBtn.hidden = true;
+  updateFullscreenBtn();
+
   document.getElementById("startBtn").addEventListener("click", () => {
     // 1) 唤醒浏览器内置语音（iOS Safari 必须）
     if ("speechSynthesis" in window) {
